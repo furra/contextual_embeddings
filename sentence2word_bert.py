@@ -25,8 +25,8 @@ if __name__ == '__main__':
     parser.add_argument('word_file', metavar='FILE',
                         help='File in JSON format with example sentences for each word.')
     parser.add_argument('-o', type=str, dest='output_name', default='bert', help='Name of output file.')
-    parser.add_argument('-c', type=int, dest='count', default=0,
-                        help='How many sentences to calculate the word vector. 0 means all.')
+    parser.add_argument('-p', type=int, dest='percent', choices=range(101), default=0,
+                        help='How many sentences (in percentage) to calculate the word vector. 0 is 100%.')
     parser.add_argument('-m', choices=['sent', 'word', 'both'], dest='method', default='both',
                         help='Method to calculate the word vector:\ndict: use the example sentences\n'+
                              'word: use the word as sentence\n'+
@@ -72,8 +72,9 @@ if __name__ == '__main__':
                 else:
                     continue
         shuffle(sentences)
-        if args.count > 0:
-            sentences = sentences[:args.count]
+        if args.percent: #percentage
+            num_sentences = int(len(sentences)*(args.percent)/100)
+            sentences = sentences[:num_sentences]
 
         word_vector = {
             'first': torch.zeros(ndim),
@@ -90,6 +91,8 @@ if __name__ == '__main__':
             tokenized_word = tokenizer.tokenize(sentence_word)
 
             tokenized_sentence = tokenizer.tokenize('[CLS] {} [SEP]'.format(sentence))
+            if len(tokenized_sentence) > 512:
+                continue
             tsw_indices = [index for index, token in enumerate(tokenized_sentence)
                            if tokenized_word[0] == token]
 
@@ -141,6 +144,8 @@ if __name__ == '__main__':
             for layer, vec in vector.items():
                 word_vector[layer] += vec
 
+        if not vector:
+            continue
         if len(sentences) > 1:
             for layer in word_vector:
                 word_vector[layer] /= len(sentences)
